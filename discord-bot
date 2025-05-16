@@ -1,0 +1,46 @@
+import discord
+from discord.ext import tasks, commands
+from datetime import datetime
+import asyncio
+import os
+
+TOKEN = os.getenv("TOKEN")
+CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
+
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix='!', intents=intents)
+
+@bot.event
+async def on_ready():
+    print(f'{bot.user} が起動しました')
+    send_date.start()
+
+@tasks.loop(hours=24)
+async def send_date():
+    now = datetime.now()
+    weekday_jp = ['月', '火', '水', '木', '金', '土', '日']
+    weekday = weekday_jp[now.weekday()]
+    date_str = now.strftime(f'%Y年%m月%d日（{weekday}）')
+    channel = bot.get_channel(CHANNEL_ID)
+    if channel:
+        await channel.send(f'📅 今日の日付: {date_str}')
+
+@send_date.before_loop
+async def before():
+    await bot.wait_until_ready()
+    now = datetime.now()
+    target = now.replace(hour=9, minute=0, second=0, microsecond=0)
+    if now > target:
+        target = target.replace(day=now.day + 1)
+    await asyncio.sleep((target - now).total_seconds())
+
+@bot.command()
+async def test(ctx):
+    now = datetime.now()
+    weekday_jp = ['月', '火', '水', '木', '金', '土', '日']
+    weekday = weekday_jp[now.weekday()]
+    date_str = now.strftime(f'%Y年%m月%d日（{weekday}）')
+    await ctx.send(f'📅 今日の日付: {date_str}')
+
+bot.run(TOKEN)
